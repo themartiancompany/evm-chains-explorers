@@ -139,6 +139,8 @@ _chain_explorers_names_get() {
     evm-chains-info \
       -o \
         "explorers" \
+      -s \
+        "all" \
       "${_chain}")
   ) 
   for _explorer in "${_explorers[@]}"; do
