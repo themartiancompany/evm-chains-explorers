@@ -1,0 +1,399 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+_bin="$( \
+  dirname \
+    "$( \
+      command \
+        -v \
+	  "env")")"
+_lib="${_bin}/../lib"
+source \
+  "${_lib}/libcrash-bash/crash-bash"
+
+# shellcheck disable=SC2034
+_global_variables() {
+  usage_date=""
+  target_command=""
+  target_key=""
+  target_value=""
+  selection_method=""
+  target_chain=""
+  color=""
+  quiet=""
+}
+
+_requirements() {
+  # _check_cmd \
+  #   'evm-contract-call' \
+  #   'evm-contract-tools'
+  _check_cmd \
+    "shuf" \
+    "coreutils"
+}
+
+_get_conf_path() {
+  echo \
+    "${HOME}/.config/$( \
+      _get \
+        "app" \
+        "name")"
+}
+
+_select() {
+  local \
+    _selection_method="${1}" \
+    _results=() \
+    _index \
+    _length
+  shift \
+    1
+  _results=(
+    "$@"
+  )
+  if [[ "${_selection_method}" == "kirsh" ]]; then
+    _index="0"
+    echo \
+      "${_results[${_index}]}"
+  elif [[ "${_selection_method}" == "random" ]]; then
+    _length="${#_results[@]}"
+    _index="$( \
+      shuf \
+        -i \
+          "0-$((${_length} -1))" \
+        -n \
+          1)"
+    echo \
+      "${_results[${_index}]}"
+  elif [[ "${_selection_method}" == "all" ]]; then
+    printf \
+      "%s\n" \
+      "${_results[@]}"
+  fi
+}
+
+_explorer_keys_get() {
+  mapfile \
+    -d \
+    $'\0' \
+    _keys < \
+    <(find \
+        "${_conf_path}" \
+	-iwholename \
+          "*.txt" \
+	-type \
+	  "f" \
+	-print0 || \
+      true)
+}
+
+_explorers_keys_get() {
+  local \
+    _explorers_dirs=() \
+    _explorer
+  mapfile \
+    -d \
+    $'\0' \
+    _explorers_dirs < \
+    <(find \
+        "${_conf_path}" \
+        -mindepth \
+          "1" \
+	-type \
+	  "d" \
+	-print0 || \
+      true)
+  for _explorer in "${_explorers_dirs[@]}"; do
+    _explorers+=( 
+      "$(basename \
+           "${_explorer}")"
+    )
+  done
+}
+
+_key_get() {
+  local \
+    _explorer="${1}" \
+    _conf_path \
+    _keys=()
+  _conf_path="$( \
+    _get_conf_path)/${_explorer}"
+  if [[ -d "${_conf_path}" ]]; then
+    _explorer_keys_get
+  fi
+  if [[ "${_keys[*]}" == "" ]]; then
+    _msg_info \
+      "No keys found for '${_explorer}'"
+  fi
+  echo \
+    "${_keys[*]}"
+}
+
+_chain_explorers_names_get() {
+  local \
+    _chain="${1}" \
+    _explorers=() \
+    _explorer
+  _explorers=( $( \
+    evm-chains-info \
+      -o \
+        "explorers" \
+      "${_chain}")
+  ) 
+  for _explorer in "${_explorers[@]}"; do
+    echo \
+      "${_explorer#https://}"
+  done
+}
+
+_keys_get() {
+  local \
+    _chain="${1}" \
+    _selection_method="${2}" \
+    _explorers=() \
+    _conf_path \
+    _chain_explorers=() \
+    _keys=()
+  _chain_explorers=( $( \
+    _chain_explorers_names_get \
+      "${_chain}")
+  )
+  _conf_path="$( \
+    _get_conf_path)"
+  _explorers_keys_get
+  for _chain_explorer in "${_chain_explorers[@]}"; do
+    for _explorer in "${_explorers[@]}"; do
+      if [[ "${_chain_explorer}" == "${_explorer}" ]]; then
+        _keys+=( $( \
+          find \
+           "${_conf_path}/${_explorer}" \
+           -mindepth \
+             1 \
+           -type \
+             "f")
+        )
+      fi
+    done
+  done
+  if (( "${#_keys[@]}" > 1 )); then
+    _select \
+      "${_selection_method}" \
+      "${_keys[@]}"
+  elif (( "${#_keys[@]}" == 1 )); then
+    echo \
+      "${_keys[0]}"
+  fi
+}
+
+_evm_chains_explorers() {
+  local \
+    _target_command="${1}" \
+    _target_key="${2}" \
+    _target_value="${3}" \
+    _selection_method="${4}" \
+    _target_chain="${5}"
+  shift \
+    5
+  _opts+=(
+    "$@"
+  )
+  if [[ "${_target_command}" == "get" ]]; then
+    if [[ "${_target_key}" == "key" ]]; then
+      _key_get \
+        "${_target_value}"
+    elif [[ "${_target_key}" == "keys" ]]; then
+      _keys_get \
+        "${_target_chain}" \
+        "${_selection_method}"
+    fi
+  else
+    _msg_error \
+      "unknown command '${_target_command}'" \
+      1
+  fi
+}
+
+_set_overrides() {
+  if [[ -v override_quiet ]]; then
+    quiet="${override_quiet}"
+  elif [[ -z "${quiet}" ]]; then
+    quiet="y"
+  fi
+  if [[ -v override_color ]]; then
+    color="${override_color}"
+  elif [[ -z "${color}" ]]; then
+    color="n"
+  fi
+  _set_override \
+    "usage" \
+    "date" \
+    "$(_get_date_human)"
+  _set_override \
+    "target" \
+    "command" \
+    "get"
+  _set_override \
+    "target" \
+    "key" \
+    "keys"
+  _set_override \
+    "target" \
+    "chain" \
+    "Gnosis"
+  _set_override \
+    "selection" \
+    "method" \
+    "kirsh"
+}
+
+# Show help usage, with an exit status.
+# $1: exit status number.
+_usage() {
+  local \
+    _exit="${1}" \
+    _usage_text
+  IFS='' \
+    read \
+      -r \
+      -d '' \
+      _usage_text << \
+        ENDUSAGETEXT || true
+Returns info about EVM blockchains explorers.
+
+Usage:
+  $(_get "app" "name")
+    [options]
+    <target_command>
+
+  commands:
+    get
+      <key>
+      <value>
+
+  keys:
+    key                    Given an explorer as key returns
+                           the path of its available API keys.
+    keys                   Shows all available API keys for
+                           target blockchain's explorers
+
+  values:
+    explorer
+
+  options:
+     -c <target_chain>      Target chain for which to return
+                            explorer informations. Valid
+                            values are all those accepted by
+                            evm-chains-info.
+                            Default: '$(_get "target" "chain")'
+     -s <selection_method>  When output type is 'rpc', 
+                            selection criterion to use when
+                            more than one is available.
+                            It can be 'kirsh', 'random' or
+                            'all'.
+                            Default: '$(_get "selection" "method")'
+
+     -h                     This message.
+     -c                     Enable color output
+     -v                     Enable verbose output
+ENDUSAGETEXT
+  _printf \
+    '%s\n' \
+    "${_usage_text}"
+  exit \
+    "${_exit}"
+}
+
+# Shows configuration options.
+_show_config() {
+  _msg_info "${app_name} configuration"
+  _msg_info "               Usage date:   $(_get "usage" "date")"
+  _msg_info "             Target chain:   $(_get "target" "chain")"
+  _msg_info "           Target command:   $(_get "target" "command")"
+  _msg_info "               Target key:   $(_get "target" "key")"
+  _msg_info "             Target value:   $(_get "target" "value")"
+  _msg_info "         Selection method:   $(_get "selection" "method")"
+}
+
+_globals
+_global_variables
+_requirements
+# shellcheck disable=SC2034
+while \
+  getopts \
+    'c:s:cvh?' \
+    arg; do
+  case \
+    "${arg}" in
+    c) override_target_chain="${OPTARG}" ;;
+    s) override_selection_method="${OPTARG}" ;;
+    c) override_color="y" ;;
+    v) override_quiet="n" ;;
+    h|?) _set_overrides && \
+         _usage \
+           0 ;;
+    *)
+    _msg_error \
+      "Invalid argument '${arg}'" \
+      0
+    _usage \
+      1
+    ;;
+  esac
+done
+shift \
+  $(( \
+    OPTIND - 1 \
+  ))
+if (( $# < 1)); then
+  _msg_error \
+    "no command given" \
+    0
+  _set_overrides
+  _usage \
+    1
+fi
+_set \
+  "target" \
+  "command" \
+  "${1}"
+if (( $# > 1)); then
+  _set \
+    "target" \
+    "key" \
+    "${2}"
+fi
+if (( $# > 2)); then
+  _set \
+    "target" \
+    "value" \
+    "${3}"
+fi
+_set_overrides
+_config_user_init \
+  "$( \
+    _get \
+      "app" \
+      "name")"
+_show_config
+app_opts=(
+  "$(_get \
+       "target" \
+       "command")"
+  "$(_get \
+       "target" \
+       "key")"
+  "$(_get \
+       "target" \
+       "value")"
+  "$(_get \
+       "selection" \
+       "method")"
+  "$(_get \
+       "target" \
+       "chain")"
+)
+_evm_chains_explorers \
+  "${app_opts[@]}"
+
+# vim:set sw=2 sts=-1 et:
