@@ -158,7 +158,9 @@ _chain_explorers_names_get() {
 _keys_explorers_get() {
   local \
     _chain="${1}" \
-    _chain_explorers=()
+    _selection_method="${2}" \
+    _chain_explorers=() \
+    _keys_explorers=()
   _chain_explorers=( $( \
     _chain_explorers_names_get \
       "${_chain}")
@@ -169,19 +171,19 @@ _keys_explorers_get() {
   for _chain_explorer in "${_chain_explorers[@]}"; do
     for _explorer in "${_explorers[@]}"; do
       if [[ "${_chain_explorer}" == "${_explorer}" ]]; then
-        _explorers+=(
+        _keys_explorers+=(
           "${_explorer}"
         )
       fi
     done
   done
-  if (( "${#_explorers[@]}" > 1 )); then
+  if (( "${#_keys_explorers[@]}" > 1 )); then
     _select \
       "${_selection_method}" \
-      "${_explorers[@]}"
-  elif (( "${#_explorers[@]}" == 1 )); then
+      "${_keys_explorers[@]}"
+  elif (( "${#_keys_explorers[@]}" == 1 )); then
     echo \
-      "${_explorers[0]}"
+      "${_keys_explorers[0]}"
   fi
 }
 
