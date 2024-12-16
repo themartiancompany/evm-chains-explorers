@@ -115,6 +115,7 @@ _explorers_keys_get() {
 _key_get() {
   local \
     _explorer="${1}" \
+    _selection_method="${2}" \
     _conf_path \
     _keys=()
   _conf_path="$( \
@@ -122,12 +123,17 @@ _key_get() {
   if [[ -d "${_conf_path}" ]]; then
     _explorer_keys_get
   fi
-  if [[ "${_keys[*]}" == "" ]]; then
+  if (( "${#_keys[@]}" > 1 )); then
+    _select \
+      "${_selection_method}" \
+      "${_keys[@]}"
+  elif (( "${#_keys[@]}" == 1 )); then
+    echo \
+      "${_keys[0]}"
+  elif [[ "${_keys[*]}" == "" ]]; then
     _msg_info \
       "No keys found for '${_explorer}'"
   fi
-  echo \
-    "${_keys[*]}"
 }
 
 _chain_explorers_names_get() {
@@ -147,6 +153,36 @@ _chain_explorers_names_get() {
     echo \
       "${_explorer#https://}"
   done
+}
+
+_keys_explorers_get() {
+  local \
+    _chain="${1}" \
+    _chain_explorers=()
+  _chain_explorers=( $( \
+    _chain_explorers_names_get \
+      "${_chain}")
+  )
+  _conf_path="$( \
+    _get_conf_path)"
+  _explorers_keys_get
+  for _chain_explorer in "${_chain_explorers[@]}"; do
+    for _explorer in "${_explorers[@]}"; do
+      if [[ "${_chain_explorer}" == "${_explorer}" ]]; then
+        _explorers+=(
+          "${_explorer}"
+        )
+      fi
+    done
+  done
+  if (( "${#_explorers[@]}" > 1 )); then
+    _select \
+      "${_selection_method}" \
+      "${_explorers[@]}"
+  elif (( "${#_explorers[@]}" == 1 )); then
+    echo \
+      "${_explorers[0]}"
+  fi
 }
 
 _keys_get() {
@@ -203,9 +239,14 @@ _evm_chains_explorers() {
   if [[ "${_target_command}" == "get" ]]; then
     if [[ "${_target_key}" == "key" ]]; then
       _key_get \
-        "${_target_value}"
+        "${_target_value}" \
+        "${_selection_method}"
     elif [[ "${_target_key}" == "keys" ]]; then
       _keys_get \
+        "${_target_chain}" \
+        "${_selection_method}"
+    elif [[ "${_target_key}" == "keys_explorers" ]]; then
+      _keys_explorers_get \
         "${_target_chain}" \
         "${_selection_method}"
     fi
@@ -275,9 +316,11 @@ Usage:
 
   keys:
     key                    Given an explorer as key returns
-                           the path of its available API keys.
+      <explorer>           the path of its available API keys.
     keys                   Shows all available API keys for
-                           target blockchain's explorers
+                           target blockchain's explorers.
+    keys_explorers         Shows all explorers for which
+                           API keys are available.
 
   values:
     explorer
