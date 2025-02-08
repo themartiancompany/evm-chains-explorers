@@ -332,13 +332,13 @@ Usage:
                             explorer informations. Valid
                             values are all those accepted by
                             evm-chains-info.
-                            Default: '$(_get "target" "chain")'
+                            Default: '${target_chain}'
      -s <selection_method>  When output type is 'rpc', 
                             selection criterion to use when
                             more than one is available.
                             It can be 'kirsh', 'random' or
                             'all'.
-                            Default: '$(_get "selection" "method")'
+                            Default: '${selection_method}'
 
      -h                     This message.
      -c                     Enable color output
@@ -354,12 +354,12 @@ ENDUSAGETEXT
 # Shows configuration options.
 _show_config() {
   _msg_info "${app_name} configuration"
-  _msg_info "               Usage date:   $(_get "usage" "date")"
-  _msg_info "             Target chain:   $(_get "target" "chain")"
-  _msg_info "           Target command:   $(_get "target" "command")"
-  _msg_info "               Target key:   $(_get "target" "key")"
-  _msg_info "             Target value:   $(_get "target" "value")"
-  _msg_info "         Selection method:   $(_get "selection" "method")"
+  _msg_info "               Usage date:   ${usage_date}"
+  _msg_info "             Target chain:   ${target_chain}"
+  _msg_info "           Target command:   ${target_command}"
+  _msg_info "               Target key:   ${target_key}"
+  _msg_info "             Target value:   ${target_value}"
+  _msg_info "         Selection method:   ${selection_method}"
 }
 
 _globals
@@ -424,21 +424,11 @@ _config_user_init \
       "name")"
 _show_config
 app_opts=(
-  "$(_get \
-       "target" \
-       "command")"
-  "$(_get \
-       "target" \
-       "key")"
-  "$(_get \
-       "target" \
-       "value")"
-  "$(_get \
-       "selection" \
-       "method")"
-  "$(_get \
-       "target" \
-       "chain")"
+  "${target_command}"
+  "${target_key}"
+  "${target_value}"
+  "${selection_method}"
+  "${target_chain}"
 )
 _evm_chains_explorers \
   "${app_opts[@]}"
