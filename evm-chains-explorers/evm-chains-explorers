@@ -418,10 +418,7 @@ if (( $# > 2)); then
 fi
 _set_overrides
 _config_user_init \
-  "$( \
-    _get \
-      "app" \
-      "name")"
+  "${app_name}"
 _show_config
 app_opts=(
   "${target_command}"
