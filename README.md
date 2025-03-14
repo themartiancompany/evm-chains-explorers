@@ -35,7 +35,10 @@ It depends on
   https://github.com/themartiancompany/evm-chains-info)
 and it is a dependency for the
 [EVM Contracts Tools](
-  https://github.com/themartiancompany/evm-contracts-tools).
+  https://github.com/themartiancompany/evm-contracts-tools)
+and
+[libEVM](
+  https://github.com/themartiancompany/libevm).
 
 ## Installation
 
