@@ -21,15 +21,21 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 _bin="$( \
   dirname \
     "$( \
       command \
         -v \
-	  "env")")"
-_lib="${_bin}/../lib"
-source \
-  "${_lib}/libcrash-bash/crash-bash"
+        "env")")"
+_lib="$( \
+  realpath \
+    "${_bin}/../lib")"
+_crash_bash="${_lib}/libcrash-bash/crash-bash"
+_sourced \
+  "${_crash_bash}" 2>/dev/null || \
+  source \
+    "${_crash_bash}"
 
 # shellcheck disable=SC2034
 _global_variables() {
@@ -50,14 +56,14 @@ _requirements() {
   _check_cmd \
     "shuf" \
     "coreutils"
+  _check_cmd \
+    "find" \
+    "findutils"
 }
 
 _get_conf_path() {
   echo \
-    "${HOME}/.config/$( \
-      _get \
-        "app" \
-        "name")"
+    "${HOME}/.config/${app_name}"
 }
 
 _select() {
@@ -326,7 +332,7 @@ _usage() {
 Returns info about EVM blockchains explorers.
 
 Usage:
-  $(_get "app" "name")
+  ${app_name}
     [options]
     <target_command>
 
@@ -424,16 +430,10 @@ _set \
   "command" \
   "${1}"
 if (( $# > 1)); then
-  _set \
-    "target" \
-    "key" \
-    "${2}"
+  target_key="${2}"
 fi
 if (( $# > 2)); then
-  _set \
-    "target" \
-    "value" \
-    "${3}"
+  target_value="${3}"
 fi
 _set_overrides
 _config_user_init \
